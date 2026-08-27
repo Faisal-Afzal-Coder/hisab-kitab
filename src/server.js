@@ -1,7 +1,6 @@
 const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
-const path = require('path');
 const dotenv = require('dotenv');
 const connectDB = require('./config/db');
 const errorHandler = require('./middleware/errorHandler');
@@ -37,13 +36,16 @@ if (process.env.NODE_ENV !== 'production') {
   app.use(morgan('dev'));
 }
 
-// Serve uploaded files statically
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
-
 // 2. Health check & Diagnostics (Registered BEFORE DB middleware so it always returns 200)
 const healthHandler = (req, res) => {
   const hasMongo = Boolean(process.env.MONGODB_URI);
   const hasJwt = Boolean(process.env.JWT_SECRET);
+  const hasCloudinary = Boolean(
+    process.env.CLOUDINARY_CLOUD_NAME &&
+      process.env.CLOUDINARY_API_KEY &&
+      process.env.CLOUDINARY_API_SECRET
+  );
+
   res.status(200).json({
     status: 'online',
     system: 'Hisab-Kitab Multi-Brother Business Management System',
@@ -51,6 +53,7 @@ const healthHandler = (req, res) => {
     configStatus: {
       hasMongoDBUri: hasMongo,
       hasJwtSecret: hasJwt,
+      hasCloudinary: hasCloudinary,
       nodeEnv: process.env.NODE_ENV || 'development',
     },
     timestamp: new Date().toISOString(),
