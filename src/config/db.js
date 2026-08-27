@@ -8,26 +8,23 @@ if (!cached) {
 
 const connectDB = async () => {
   // If already connected, return cached connection
-  if (cached.conn && mongoose.connection.readyState >= 1) {
+  if (cached.conn && mongoose.connection.readyState === 1) {
     return cached.conn;
   }
 
   const uri = process.env.MONGODB_URI;
 
   if (!uri) {
-    console.warn('[MongoDB] No MONGODB_URI provided in environment variables.');
+    throw new Error('MONGODB_URI environment variable is missing.');
   }
-
-  // Connect using MongoDB URI
-  const connectionUri = uri || 'mongodb://127.0.0.1:27017/hisab_kitab';
 
   if (!cached.promise) {
     const opts = {
       bufferCommands: false,
-      serverSelectionTimeoutMS: 5000,
+      serverSelectionTimeoutMS: 10000,
     };
 
-    cached.promise = mongoose.connect(connectionUri, opts).then((mongooseInstance) => {
+    cached.promise = mongoose.connect(uri, opts).then((mongooseInstance) => {
       console.log(`[MongoDB] Connected successfully to host: ${mongooseInstance.connection.host}`);
       return mongooseInstance;
     });

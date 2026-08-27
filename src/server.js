@@ -11,7 +11,7 @@ dotenv.config();
 
 const app = express();
 
-// 1. Comprehensive CORS Middleware for all origins and preflight OPTIONS requests
+// 1. Comprehensive Global CORS Middleware
 app.use((req, res, next) => {
   const origin = req.headers.origin;
   res.setHeader('Access-Control-Allow-Origin', origin || '*');
@@ -40,12 +40,19 @@ if (process.env.NODE_ENV !== 'production') {
 // Serve uploaded files statically
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
-// 2. Health check endpoints
+// 2. Health check & Diagnostics (Registered BEFORE DB middleware so it always returns 200)
 const healthHandler = (req, res) => {
+  const hasMongo = Boolean(process.env.MONGODB_URI);
+  const hasJwt = Boolean(process.env.JWT_SECRET);
   res.status(200).json({
     status: 'online',
     system: 'Hisab-Kitab Multi-Brother Business Management System',
     environment: process.env.VERCEL ? 'Vercel Serverless' : 'Standalone Node',
+    configStatus: {
+      hasMongoDBUri: hasMongo,
+      hasJwtSecret: hasJwt,
+      nodeEnv: process.env.NODE_ENV || 'development',
+    },
     timestamp: new Date().toISOString(),
   });
 };
@@ -61,24 +68,25 @@ app.get('/', (req, res) => {
   });
 });
 
-// 3. Database connection middleware (runs before API routes)
+// 3. Database connection middleware for API routes
 app.use(async (req, res, next) => {
   try {
-    await connectDB();
+    if (process.env.MONGODB_URI) {
+      await connectDB();
+    } else {
+      console.warn('[Warning] MONGODB_URI is not set in environment variables.');
+    }
     next();
   } catch (err) {
     console.error('[DB Connection Error]:', err.message);
-    if (!process.env.MONGODB_URI) {
-      return res.status(500).json({
-        success: false,
-        error: 'Database configuration missing. Please add MONGODB_URI to your Vercel Environment Variables.',
-      });
-    }
-    next(err);
+    return res.status(500).json({
+      success: false,
+      error: `Database connection failed: ${err.message}. Please verify MONGODB_URI in Vercel Environment Variables.`,
+    });
   }
 });
 
-// 4. API Routes - Mount both on /api/... and /... for total flexibility
+// 4. API Routes - Mounted on both /api/... and /... for total flexibility
 const authRoutes = require('./routes/authRoutes');
 const businessRoutes = require('./routes/businessRoutes');
 const transactionRoutes = require('./routes/transactionRoutes');
@@ -93,7 +101,7 @@ const reportRoutes = require('./routes/reportRoutes');
 const activityRoutes = require('./routes/activityRoutes');
 const uploadRoutes = require('./routes/uploadRoutes');
 
-// Mount with /api prefix (standard)
+// Mount on /api/... (Standard)
 app.use('/api/auth', authRoutes);
 app.use('/api/business', businessRoutes);
 app.use('/api/transactions', transactionRoutes);
@@ -108,7 +116,7 @@ app.use('/api/reports', reportRoutes);
 app.use('/api/activity', activityRoutes);
 app.use('/api/upload', uploadRoutes);
 
-// Also mount at root (fallback in case frontend VITE_API_URL doesn't include /api)
+// Fallback mount at root /...
 app.use('/auth', authRoutes);
 app.use('/business', businessRoutes);
 app.use('/transactions', transactionRoutes);
