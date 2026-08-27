@@ -1,15 +1,15 @@
 const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
-const dotenv = require('dotenv');
 const path = require('path');
+const dotenv = require('dotenv');
 const connectDB = require('./config/db');
 const errorHandler = require('./middleware/errorHandler');
 
 // Load environment variables
 dotenv.config();
 
-// Connect to MongoDB
+// Connect to Database
 connectDB();
 
 const app = express();
@@ -25,12 +25,22 @@ if (process.env.NODE_ENV !== 'production') {
 // Serve uploaded files statically
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
-// Health check endpoint
-app.get('/api/health', (req, res) => {
+// Health check endpoints (both /health and /api/health)
+const healthHandler = (req, res) => {
   res.status(200).json({
     status: 'online',
     system: 'Hisab-Kitab Multi-Brother Business Management System',
     timestamp: new Date().toISOString(),
+  });
+};
+
+app.get('/health', healthHandler);
+app.get('/api/health', healthHandler);
+app.get('/', (req, res) => {
+  res.status(200).json({
+    name: 'Hisab-Kitab Backend API',
+    version: '1.0.0',
+    status: 'running',
   });
 });
 
@@ -58,6 +68,8 @@ const server = app.listen(PORT, () => {
 });
 
 // Handle unhandled promise rejections
-process.on('unhandledRejection', (err, promise) => {
-  console.error(`[Unhandled Rejection]: ${err.message}`);
+process.on('unhandledRejection', (err) => {
+  console.error(`[Server Error]: ${err.message}`);
 });
+
+module.exports = app;
