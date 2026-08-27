@@ -14,8 +14,16 @@ connectDB();
 
 const app = express();
 
-// Middlewares
-app.use(cors({ origin: true, credentials: true }));
+// Comprehensive CORS setup to allow localhost and all client origins without preflight failure
+app.use(
+  cors({
+    origin: true, // Reflect request origin
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+  })
+);
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 if (process.env.NODE_ENV !== 'production') {
