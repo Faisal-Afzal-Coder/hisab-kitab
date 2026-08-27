@@ -14,10 +14,20 @@ connectDB();
 
 const app = express();
 
+// Middleware to ensure DB connection is ready on serverless cold starts
+app.use(async (req, res, next) => {
+  try {
+    await connectDB();
+    next();
+  } catch (err) {
+    next(err);
+  }
+});
+
 // Comprehensive CORS setup to allow localhost and all client origins without preflight failure
 app.use(
   cors({
-    origin: true, // Reflect request origin
+    origin: true,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
@@ -71,9 +81,11 @@ app.use('/api/upload', require('./routes/uploadRoutes'));
 app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
-const server = app.listen(PORT, () => {
-  console.log(`[Server] Hisab-Kitab Backend API running on port ${PORT}`);
-});
+if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`[Server] Hisab-Kitab Backend API running on port ${PORT}`);
+  });
+}
 
 // Handle unhandled promise rejections
 process.on('unhandledRejection', (err) => {
