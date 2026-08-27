@@ -9,22 +9,27 @@ const errorHandler = require('./middleware/errorHandler');
 // Load environment variables
 dotenv.config();
 
-// Connect to Database
-connectDB();
-
 const app = express();
 
-// Middleware to ensure DB connection is ready on serverless cold starts
+// Middleware to ensure DB is connected before processing requests on serverless
 app.use(async (req, res, next) => {
   try {
     await connectDB();
     next();
   } catch (err) {
+    console.error('[DB Connection Error]:', err.message);
+    // Proceed or return informative JSON instead of 500 server crash
+    if (!process.env.MONGODB_URI) {
+      return res.status(500).json({
+        success: false,
+        error: 'Database configuration missing. Please add MONGODB_URI to your Vercel Environment Variables.',
+      });
+    }
     next(err);
   }
 });
 
-// Comprehensive CORS setup to allow localhost and all client origins without preflight failure
+// Comprehensive CORS setup
 app.use(
   cors({
     origin: true,
@@ -43,11 +48,12 @@ if (process.env.NODE_ENV !== 'production') {
 // Serve uploaded files statically
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
-// Health check endpoints (both /health and /api/health)
+// Health check endpoints
 const healthHandler = (req, res) => {
   res.status(200).json({
     status: 'online',
     system: 'Hisab-Kitab Multi-Brother Business Management System',
+    environment: process.env.VERCEL ? 'Vercel Serverless' : 'Standalone Node',
     timestamp: new Date().toISOString(),
   });
 };
@@ -81,15 +87,10 @@ app.use('/api/upload', require('./routes/uploadRoutes'));
 app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
-if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
+if (!process.env.VERCEL) {
   app.listen(PORT, () => {
     console.log(`[Server] Hisab-Kitab Backend API running on port ${PORT}`);
   });
 }
-
-// Handle unhandled promise rejections
-process.on('unhandledRejection', (err) => {
-  console.error(`[Server Error]: ${err.message}`);
-});
 
 module.exports = app;
