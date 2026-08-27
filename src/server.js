@@ -18,7 +18,6 @@ app.use(async (req, res, next) => {
     next();
   } catch (err) {
     console.error('[DB Connection Error]:', err.message);
-    // Proceed or return informative JSON instead of 500 server crash
     if (!process.env.MONGODB_URI) {
       return res.status(500).json({
         success: false,
@@ -87,7 +86,8 @@ app.use('/api/upload', require('./routes/uploadRoutes'));
 app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
-if (!process.env.VERCEL) {
+// Only start standalone HTTP server when executed directly, NOT when imported in Vercel serverless
+if (require.main === module && !process.env.VERCEL) {
   app.listen(PORT, () => {
     console.log(`[Server] Hisab-Kitab Backend API running on port ${PORT}`);
   });
